@@ -24,6 +24,7 @@ Open `index.html` in a browser. It works offline (formulas use the bundled `vend
 | `ai.js` | AI tutor: free open model by default (GPT-OSS 20B via Pollinations, no key), or Anthropic, OpenAI, Gemini, OpenAI-compatible endpoints (keys stay in the browser) |
 | `cloud.js` | claude.ai features: cross-device sync, study-group questions, Ask (uses claude.ai or the connected provider) |
 | `exercise-tools.js` | Exercise progress ("Solved" / "Review again", synced across devices) and the random timed Exercise test |
+| `tutorial.js` | Interactive tutorial: a guided tour over the real pages in 7 chapters, with tasks to try, resumable; the Tutorial page and the invitation on the start page |
 | `widgets.js` | Interactive tools (matrix lab, tree solver, Cournot, auctions, signalling, ...) |
 | `app.js` | Routing, navigation, quiz bank, flashcards, drills, mock-exam timer, search, progress backup |
 

@@ -15,7 +15,7 @@
   function buildNav() {
     const parts = {};
     GT.lessons.forEach(l => { (parts[l.part] = parts[l.part] || []).push(l); });
-    let h = '<div class="nav-group"><span class="eyebrow">Overview</span><div class="nav">' + navLink(['home', 'Start here']) + navLink(['concepts', 'Concept map']) + navLink(['lab', 'Game lab']) + '</div></div>';
+    let h = '<div class="nav-group"><span class="eyebrow">Overview</span><div class="nav">' + navLink(['home', 'Start here']) + navLink(['concepts', 'Concept map']) + navLink(['lab', 'Game lab']) + navLink(['tutorial', 'Tutorial']) + '</div></div>';
     h += '<div class="nav-group"><span class="eyebrow">Progress</span><div class="progressbar"><div id="pbar"></div></div><div class="small muted" style="padding:0 10px" id="ptext"></div><div class="sync-line" id="syncStatus"' + (GT.cloud && GT.cloud.statusText ? '' : ' hidden') + ' title="Your progress is saved to your claude.ai account and appears on all your devices">' + (GT.cloud && GT.cloud.statusText ? esc(GT.cloud.statusText) : '') + '</div></div>';
     Object.keys(parts).forEach(p => {
       h += '<div class="nav-group"><span class="eyebrow">' + p + '</span><div class="nav">' + parts[p].map(l => '<a href="#' + l.id + '" data-r="' + l.id + '"><span class="num">L' + l.no + '</span><span>' + l.title + '</span>' + (done.has(l.id) ? '<span class="done">✓</span>' : '') + '</a>').join('') + '</div></div>';
@@ -57,6 +57,8 @@
     if (r === 'search') Search.mount($('#searchpage'));
     if (r === 'mock') Mock.bind(main);
     if (r === 'exercises') GT.bindExStatus(main);
+    if (r === 'tutorial') GT.bindTutorial(main);
+    if (r === 'home' && GT.bindTourInvite) GT.bindTourInvite(main);
     if (r === 'extest') GT.bindExTest(main);
     if (r === 'home') bindBackup();
     if (r === 'plan') GT.buildPlan(main);
@@ -146,6 +148,7 @@
 <h1>Advanced Micro Lab</h1>
 <p>A complete, interactive course companion built from the 18 lecture slide sets, the exercise sheets and the past exams in your course folder. Every lecture is broken into small steps, every derivation can be revealed line by line, and every model you need for the exam has a tool you can play with.</p>
 ${lastL ? '<p><a class="btn" href="#' + lastL.id + '" style="text-decoration:none">Continue with L' + lastL.no + ': ' + lastL.title + '</a></p>' : '<p><a class="btn" href="#l1" style="text-decoration:none">Start with Lecture 1</a></p>'}
+${GT.tourInvite ? GT.tourInvite() : ''}
 ${todayBox()}
 <h2>The course on one page</h2>
 <p>The course is organised by classes of games. Each cell has its own equilibrium concept, and each refinement keeps the previous one as a special case.</p>
