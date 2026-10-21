@@ -1,0 +1,7 @@
+# Course materials and literature are copyrighted: keep them local, do not publish.
+*.pdf
+Literature/
+Exercises/
+
+# System files
+.DS_Store

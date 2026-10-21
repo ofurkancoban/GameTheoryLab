@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Advanced Micro Lab</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;600;700&display=swap">
+<link rel="stylesheet" href="style.css">
+<script>
+window.MathJax = { tex: { inlineMath: [['\\(', '\\)']], displayMath: [['\\[', '\\]']] }, svg: { fontCache: 'global' }, startup: { typeset: false }, options: { enableMenu: false } };
+</script>
+<script src="vendor/tex-svg.min.js" async id="MathJax-script" onerror="var s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg.min.js';s.async=true;s.onload=function(){var w=setInterval(function(){if(window.MathJax&&MathJax.typesetPromise){clearInterval(w);MathJax.typesetPromise([document.getElementById('main')]).catch(function(){});}},100)};document.head.appendChild(s);"></script>
+</head>
+<body>
+<header class="topbar">
+  <button class="iconbtn" id="menuBtn" type="button" aria-label="Open course menu">Menu</button>
+  <a class="brand" href="#home"><span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span><span></span></span><span class="brand-text"><span class="bt-long">Advanced </span>Micro Lab</span></a>
+  <span class="spacer"></span>
+  <div class="search"><input id="search" type="search" placeholder="Search the course, press Enter" aria-label="Search"></div>
+  <button class="iconbtn" id="searchBtn" type="button" aria-label="Search the course" aria-expanded="false">Search</button>
+  <button class="iconbtn" id="themeBtn" type="button">Theme</button>
+</header>
+<div class="shell">
+  <aside class="sidebar" id="sidebar"><nav id="nav" aria-label="Course"></nav></aside>
+  <main id="main"></main>
+</div>
+<script src="core.js"></script>
+<script src="tree-solutions.js"></script>
+<script src="content-a.js"></script>
+<script src="content-b.js"></script>
+<script src="content-c.js"></script>
+<script src="content-d.js"></script>
+<script src="content-e.js"></script>
+<script src="content-f.js"></script>
+<script src="content-g.js"></script>
+<script src="content-h.js"></script>
+<script src="content-i.js"></script>
+<script src="content-j.js"></script>
+<script src="exercise-tools.js"></script>
+<script src="widgets.js"></script>
+<script src="ai.js"></script>
+<script src="cloud.js"></script>
+<script src="app.js"></script>
+<script>
+document.getElementById('MathJax-script').addEventListener('load', function () {
+  var wait = setInterval(function () { if (window.MathJax && MathJax.typesetPromise) { clearInterval(wait); MathJax.typesetPromise([document.getElementById('main')]).catch(function () {}); } }, 100);
+});
+</script>
+</body>
+</html>
