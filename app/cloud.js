@@ -128,8 +128,19 @@
       try { const r = await C.sample([{ role: 'user', content: rules }, ...turns], { cache: false, signal, onText: onText ? ({ text }) => onText(text) : undefined }); return r.text; }
       catch (e) { const x = new Error(e && e.message || 'failed'); x.code = e && e.code; x.text = e && e.text; throw x; }
     }
-    if (GT.ai && GT.ai.configured()) return GT.ai.chat(rules, turns, signal);
+    if (GT.ai && GT.ai.configured()) return GT.ai.chat(rules, turns, signal, onText);
     const x = new Error('No AI connected.'); x.code = 'not_configured'; throw x;
+  };
+  /* Live rendering of a streamed answer: Markdown while it arrives (throttled), formulas typeset at the end. */
+  GT.streamInto = function (el) {
+    let last = '', timer = null;
+    el.classList.add('streaming');
+    const paint = () => { timer = null; el.innerHTML = renderMD(last) || '<p class="muted">Thinking...</p>'; };
+    return {
+      update(t) { last = t; if (!timer) timer = setTimeout(paint, 60); },
+      finish(t) { clearTimeout(timer); el.classList.remove('streaming'); el.innerHTML = renderMD(t != null ? t : last); GT.typeset(el); },
+      fail() { clearTimeout(timer); el.classList.remove('streaming'); },
+    };
   };
   GT.aiAvailable = () => !!C.sample || !!(GT.ai && GT.ai.configured());
   const aiMissingHTML = () => hasViewer ? '' : '<p class="small">No AI connected yet. <a href="#ai">Connect your own AI</a> (Anthropic, OpenAI, Gemini or a local model) to ask questions here.</p>';
@@ -151,7 +162,7 @@
       if (hasViewer && !C.sample) return;
       el.hidden = false;
       const src = el.querySelector('.ask-src');
-      const label = () => { if (C.sample) src.textContent = 'Answers use your claude.ai account and follow this lecture\'s content.'; else if (GT.ai && GT.ai.configured()) { const c = GT.ai.cfg(); src.innerHTML = c.provider === 'free' ? 'Answers use the free open model GPT-OSS 20B (no key, about one answer every 30 seconds). <a href="#ai">Change</a>' : 'Answers use ' + esc(GT.ai.PROVIDERS[c.provider].name) + ' (' + esc(c.model) + '). <a href="#ai">Change</a>'; } else src.textContent = ''; el.querySelector('.ask-missing').innerHTML = GT.aiAvailable() ? '' : aiMissingHTML(); };
+      const label = () => { if (C.sample) src.textContent = 'Answers use your claude.ai account and follow this lecture\'s content.'; else if (GT.ai && GT.ai.configured()) { const c = GT.ai.cfg(); src.innerHTML = c.provider === 'free' ? 'Answers use the free open model GPT-OSS 20B.' : 'Answers use ' + esc(GT.ai.PROVIDERS[c.provider].name) + ' (' + esc(c.model) + '). <a href="#ai">Change</a>'; } else src.textContent = ''; el.querySelector('.ask-missing').innerHTML = GT.aiAvailable() ? '' : aiMissingHTML(); };
       label();
       const l = GT.lessons.find(x => x.id === el.dataset.ask), log = el.querySelector('.ask-log'), inp = el.querySelector('.ask-in'), btn = el.querySelector('.ask-go'), stop = el.querySelector('.ask-stop'), note = el.querySelector('.ask-note');
       const tmp = document.createElement('div'); tmp.innerHTML = l.html;
@@ -165,17 +176,18 @@
         if (!GT.aiAvailable()) { label(); return; }
         inp.value = ''; btn.disabled = true; stop.hidden = false; note.textContent = '';
         const qd = document.createElement('div'); qd.className = 'ask-q'; qd.textContent = q; log.appendChild(qd);
-        const ad = document.createElement('div'); ad.className = 'ask-a'; ad.textContent = 'Thinking...'; log.appendChild(ad);
+        const ad = document.createElement('div'); ad.className = 'ask-a'; ad.innerHTML = '<p class="muted">Thinking...</p>'; log.appendChild(ad);
+        const live = GT.streamInto(ad);
         turns.push({ role: 'user', content: q });
         ctl = new AbortController();
         try {
-          const text = await GT.askAI(rules, turns.slice(-8), t => { ad.textContent = t; }, ctl.signal);
+          const text = await GT.askAI(rules, turns.slice(-8), t => live.update(t), ctl.signal);
           turns.push({ role: 'assistant', content: text });
-          ad.innerHTML = esc(text).replace(/\n{2,}/g, '<br><br>').replace(/\n/g, '<br>');
-          GT.typeset(ad);
+          live.finish(text);
         } catch (e) {
           turns.pop();
-          ad.textContent = (e && e.text) || '';
+          live.fail();
+          if (e && e.text) live.finish(e.text); else ad.textContent = '';
           if (hideCodes.includes(e && e.code)) { el.hidden = true; return; }
           note.textContent = GT.aiErrorText(e);
           if (!ad.textContent) ad.remove();

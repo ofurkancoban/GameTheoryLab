@@ -103,3 +103,39 @@ function cards(lec, items) { items.forEach(([f, b]) => GT.cards.push({ lec, f, b
 
 /* Write-and-grade answer box: parts = [[label, maxPoints], ...]. */
 function ans(id, parts) { return '<div class="ansbox" data-ans="' + id + '" data-parts="' + esc(JSON.stringify(parts)) + '"></div>'; }
+
+/* Safe Markdown for AI answers: escapes HTML, keeps TeX (\( \), \[ \], $ $, $$ $$) intact for MathJax,
+ * and supports headings, bold, italics, inline code, code blocks, bullet and numbered lists, paragraphs. */
+function renderMD(src) {
+  const math = [];
+  const keep = s => '\u0000' + (math.push(s) - 1) + '\u0000';
+  let t = String(src || '').replace(/\r/g, '');
+  t = t.replace(/```[\s\S]*?(```|$)/g, m => keep('<pre class="md-code">' + esc(m.replace(/^```[^\n]*\n?/, '').replace(/```$/, '')) + '</pre>'));
+  t = t.replace(/\\\[[\s\S]*?\\\]/g, m => keep(esc(m)))
+    .replace(/\$\$([\s\S]+?)\$\$/g, (m, x) => keep('\\[' + esc(x) + '\\]'))
+    .replace(/\\\([\s\S]*?\\\)/g, m => keep(esc(m)))
+    .replace(/(^|[^\\$])\$([^\s$](?:[^$\n]*?[^\s$])?)\$(?!\d)/g, (m, pre, x) => pre + keep('\\(' + esc(x) + '\\)'));
+  const inline = s => esc(s)
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/__([^_]+)__/g, '<strong>$1</strong>')
+    .replace(/(^|[^*])\*([^*\s][^*]*?)\*(?!\*)/g, '$1<em>$2</em>');
+  const out = []; let list = null, para = [];
+  const flushPara = () => { if (para.length) { out.push('<p>' + para.map(inline).join('<br>') + '</p>'); para = []; } };
+  const flushList = () => { if (list) { out.push('<' + list.tag + '>' + list.items.map(i => '<li>' + i.map(inline).join('<br>') + '</li>').join('') + '</' + list.tag + '>'); list = null; } };
+  t.split('\n').forEach(line => {
+    const h = /^\s{0,3}(#{1,6})\s+(.*)$/.exec(line), ul = /^\s*[-*•]\s+(.*)$/.exec(line), ol = /^\s*\d+[.)]\s+(.*)$/.exec(line);
+    if (!line.trim()) { flushPara(); flushList(); return; }
+    if (/^\s*(---|\*\*\*|___)\s*$/.test(line)) { flushPara(); flushList(); out.push('<hr>'); return; }
+    if (h) { flushPara(); flushList(); out.push('<p class="md-h">' + inline(h[2]) + '</p>'); return; }
+    if (ul || ol) {
+      flushPara(); const tag = ul ? 'ul' : 'ol';
+      if (!list || list.tag !== tag) { flushList(); list = { tag, items: [] }; }
+      list.items.push([(ul || ol)[1]]); return;
+    }
+    if (list && /^\s{2,}\S/.test(line)) { list.items[list.items.length - 1].push(line.trim()); return; }
+    flushList(); para.push(line);
+  });
+  flushPara(); flushList();
+  return out.join('').replace(/\u0000(\d+)\u0000/g, (m, i) => math[+i]);
+}

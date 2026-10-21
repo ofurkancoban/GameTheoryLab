@@ -520,12 +520,13 @@ ${box('tip', '<p>From the course information sheet: exam questions are partly cl
         $('#dr-ai').addEventListener('click', async () => {
           const out = $('#dr-ai-out');
           if (!GT.aiAvailable || !GT.aiAvailable()) { out.innerHTML = '<p class="small">' + (window.claude ? 'Asking Claude is not available for this account here.' : 'No AI connected. <a href="#ai">Connect your own AI</a> to get step-by-step explanations.') + '</p>'; return; }
-          const btn = $('#dr-ai'); btn.disabled = true; out.innerHTML = '<div class="ask-a">Thinking...</div>';
+          const btn = $('#dr-ai'); btn.disabled = true; out.innerHTML = '<div class="ask-a"><p class="muted">Thinking...</p></div>';
           const prob = out.closest('.drill').cloneNode(true); prob.querySelectorAll('button, #dr-fb, #dr-ai-out, .w').forEach(x => x.remove());
           const rules = 'You are a patient tutor for an Advanced Microeconomics (game theory) course. Explain how to solve the exercise below step by step, in plain English, as a student would write it in an exam. Use the given official solution as the correct result. Keep it under 250 words. Write math in LaTeX between \\( and \\).';
           try {
-            const text = await GT.askAI(rules, [{ role: 'user', content: 'EXERCISE:\n' + prob.textContent.replace(/\s+/g, ' ').slice(0, 4000) + '\n\nOFFICIAL SOLUTION:\n' + solution().replace(/<[^>]+>/g, ' ') }], t => { out.firstChild.textContent = t; });
-            out.innerHTML = '<div class="ask-a">' + esc(text).replace(/\n{2,}/g, '<br><br>').replace(/\n/g, '<br>') + '</div>'; GT.typeset(out);
+            const live = GT.streamInto(out.firstChild);
+            const text = await GT.askAI(rules, [{ role: 'user', content: 'EXERCISE:\n' + prob.textContent.replace(/\s+/g, ' ').slice(0, 4000) + '\n\nOFFICIAL SOLUTION:\n' + solution().replace(/<[^>]+>/g, ' ') }], t => live.update(t));
+            live.finish(text);
           } catch (e) { out.innerHTML = '<p class="small">' + esc(GT.aiErrorText(e)) + '</p>'; }
           btn.disabled = false;
         });

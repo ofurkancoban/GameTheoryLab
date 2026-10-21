@@ -394,3 +394,13 @@ svg.cm { width: 100%; height: auto; min-width: 560px; display: block; }
 .exst .btn[aria-pressed="true"] { font-weight: 700; }
 .drill #xt-n, .drill #xt-t { width: auto; }
 .xt-body .anstext { margin: 4px 0 10px; }
+.ask-a p { margin: 0 0 8px; }
+.ask-a p:last-child { margin-bottom: 0; }
+.ask-a ul, .ask-a ol { margin: 4px 0 8px; padding-left: 22px; }
+.ask-a li { margin: 3px 0; }
+.ask-a .md-h { font-weight: 700; margin-top: 6px; }
+.ask-a code { font-family: var(--f-mono); font-size: .88em; background: var(--surface); padding: 1px 4px; border-radius: 4px; }
+.ask-a .md-code { font-family: var(--f-mono); font-size: .85em; background: var(--surface); padding: 8px 10px; border-radius: 6px; overflow-x: auto; white-space: pre; }
+.ask-a mjx-container[display="true"] { margin: 6px 0; overflow-x: auto; overflow-y: hidden; }
+.ask-a.streaming::after { content: "▍"; color: var(--accent); animation: blink 1s steps(2) infinite; }
+@keyframes blink { 50% { opacity: 0; } }

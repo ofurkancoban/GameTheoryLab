@@ -22,66 +22,109 @@
 
   function err(message, code) { const e = new Error(message); e.code = code || 'error'; return e; }
 
-  /* One call, whole answer. system: instructions; turns: [{role: 'user'|'assistant', content}] ending on a user turn. */
-  async function chat(system, turns, signal) {
+  /* Fetch with an idle timeout: aborts if the server sends nothing for IDLE ms (reset on every chunk). */
+  const IDLE = 60000;
+  function guard(signal) {
+    const ctl = new AbortController(); let timer = null, timedOut = false;
+    const kick = () => { clearTimeout(timer); timer = setTimeout(() => { timedOut = true; ctl.abort(); }, IDLE); };
+    if (signal) { if (signal.aborted) ctl.abort(); else signal.addEventListener('abort', () => ctl.abort()); }
+    kick();
+    return { signal: ctl.signal, kick, done: () => clearTimeout(timer), timedOut: () => timedOut };
+  }
+  /* Read a server-sent-events body; calls onJSON for every "data: {...}" line. */
+  async function readSSE(res, g, onJSON) {
+    const reader = res.body.getReader(), dec = new TextDecoder(); let buf = '';
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      g.kick();
+      buf += dec.decode(value, { stream: true });
+      let i;
+      while ((i = buf.indexOf('\n')) >= 0) {
+        const line = buf.slice(0, i).trim(); buf = buf.slice(i + 1);
+        if (!line.startsWith('data:')) continue;
+        const d = line.slice(5).trim();
+        if (d === '[DONE]') return;
+        try { onJSON(JSON.parse(d)); } catch (e) { if (e && e.code) throw e; }
+      }
+    }
+  }
+  const errJSON = async res => { try { return await res.json(); } catch (e) { return {}; } };
+  const timeoutErr = () => err('The AI did not answer within 60 seconds (the service is busy). Please ask again in a moment.', 'timeout');
+
+  /* One answer, streamed. system: instructions; turns: [{role: 'user'|'assistant', content}] ending on a user turn.
+   * onText(fullTextSoFar) is called while the answer arrives; the promise resolves with the whole answer. */
+  async function chat(system, turns, signal, onText) {
     const c = cfg(); if (!configured()) throw err('No AI connected.', 'not_configured');
-    let res, data;
+    const emit = t => { if (onText) onText(t); };
+    let g = null;
     try {
-      if (c.provider === 'free') {
-        const body = JSON.stringify({ model: c.model || 'openai-fast', messages: [{ role: 'system', content: system }, ...turns] });
+      if (c.provider === 'free' || c.provider === 'openai' || c.provider === 'compatible') {
+        const url = c.provider === 'free' ? FREE_URL : (c.provider === 'openai' ? 'https://api.openai.com/v1' : c.base.replace(/\/+$/, '')) + '/chat/completions';
+        const headers = { 'content-type': 'application/json' }; if (c.key && c.provider !== 'free') headers.authorization = 'Bearer ' + c.key;
+        const body = JSON.stringify({ model: c.model || 'openai-fast', stream: true, messages: [{ role: 'system', content: system }, ...turns] });
         for (let attempt = 0; attempt < 2; attempt++) {
-          /* The free service occasionally stalls: give each attempt at most 60 seconds. */
-          const ctl = new AbortController(); let timedOut = false;
-          const timer = setTimeout(() => { timedOut = true; ctl.abort(); }, 60000);
-          if (signal) signal.addEventListener('abort', () => ctl.abort());
-          try { res = await fetch(FREE_URL, { method: 'POST', headers: { 'content-type': 'application/json' }, body, signal: ctl.signal }); data = await res.json().catch(() => ({})); }
-          catch (e) { clearTimeout(timer); if (timedOut) throw err('The free model did not answer within 60 seconds (the free service is busy). Please ask again in a moment.', 'timeout'); throw e; }
-          clearTimeout(timer);
-          if (timedOut) throw err('The free model did not answer within 60 seconds (the free service is busy). Please ask again in a moment.', 'timeout');
-          const limited = res.status === 402 || res.status === 429;
-          if (limited && attempt === 0) {
-            /* Free tier: one answer per ~30 s. Wait once and retry instead of failing. */
-            const m = /(\d+)\s*s/.exec((data.error && data.error.message) || '');
-            await wait(Math.min(35, m ? +m[1] + 1 : 30) * 1000, signal);
-            continue;
+          g = guard(signal);
+          const res = await fetch(url, { method: 'POST', headers, body, signal: g.signal });
+          if (!res.ok) {
+            const data = await errJSON(res); g.done();
+            const limited = res.status === 402 || res.status === 429;
+            if (limited && c.provider === 'free' && attempt === 0) {
+              /* Free tier: about one answer per 30 s. Wait once and retry instead of failing. */
+              const m = /(\d+)\s*s/.exec((data.error && data.error.message) || '');
+              await wait(Math.min(35, m ? +m[1] + 1 : 30) * 1000, signal);
+              continue;
+            }
+            const msg = data.error && (data.error.message || data.error);
+            throw err(limited && c.provider === 'free' ? 'The free model allows about one answer every 30 seconds. Please wait a moment and ask again.' : (msg || ('HTTP ' + res.status)), res.status === 401 ? 'auth' : limited ? 'rate' : 'http');
           }
-          if (!res.ok) throw err(limited ? 'The free model allows about one answer every 30 seconds. Please wait a moment and ask again.' : ((data.error && data.error.message) || ('HTTP ' + res.status)), limited ? 'rate' : 'http');
-          const msg = data.choices && data.choices[0] && data.choices[0].message;
-          const text = msg ? String(msg.content || '').trim() : '';
-          if (!text) throw err('The free model returned no answer. Try again in a moment.', 'empty');
+          let text = '';
+          if (/event-stream/.test(res.headers.get('content-type') || '')) {
+            await readSSE(res, g, d => { const ch = d.choices && d.choices[0]; const piece = ch && ch.delta && ch.delta.content; if (piece) { text += piece; emit(text); } });
+          } else {
+            const data = await errJSON(res); const m = data.choices && data.choices[0] && data.choices[0].message;
+            text = m ? String(m.content || '') : ''; emit(text);
+          }
+          g.done();
+          text = text.trim();
+          if (!text) throw err('The model returned no answer. Try again in a moment.', 'empty');
           return text;
         }
       }
       if (c.provider === 'anthropic') {
-        const body = { model: c.model, max_tokens: 16000, system, messages: turns };
+        const body = { model: c.model, max_tokens: 16000, system, messages: turns, stream: true };
         const headers = { 'content-type': 'application/json', 'x-api-key': c.key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' };
         if (FALLBACK_MODELS.includes(c.model)) { body.fallbacks = 'default'; headers['anthropic-beta'] = 'server-side-fallback-2026-07-01'; }
-        res = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers, body: JSON.stringify(body), signal });
-        data = await res.json();
-        if (!res.ok) throw err((data.error && data.error.message) || ('HTTP ' + res.status), res.status === 401 ? 'auth' : res.status === 429 ? 'rate' : 'http');
-        if (data.stop_reason === 'refusal') throw err('The model declined to answer this question.', 'refused');
-        return (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('').trim();
+        g = guard(signal);
+        const res = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers, body: JSON.stringify(body), signal: g.signal });
+        if (!res.ok) { const data = await errJSON(res); g.done(); throw err((data.error && data.error.message) || ('HTTP ' + res.status), res.status === 401 ? 'auth' : res.status === 429 ? 'rate' : 'http'); }
+        let text = '', refused = false;
+        await readSSE(res, g, d => {
+          if (d.type === 'content_block_delta' && d.delta && d.delta.type === 'text_delta') { text += d.delta.text; emit(text); }
+          else if (d.type === 'message_delta' && d.delta && d.delta.stop_reason === 'refusal') refused = true;
+          else if (d.type === 'error') throw err((d.error && d.error.message) || 'The answer failed.', 'http');
+        });
+        g.done();
+        if (refused) throw err('The model declined to answer this question.', 'refused');
+        return text.trim();
       }
       if (c.provider === 'gemini') {
-        const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(c.model) + ':generateContent?key=' + encodeURIComponent(c.key);
+        const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(c.model) + ':streamGenerateContent?alt=sse&key=' + encodeURIComponent(c.key);
         const body = { systemInstruction: { parts: [{ text: system }] }, contents: turns.map(t => ({ role: t.role === 'assistant' ? 'model' : 'user', parts: [{ text: t.content }] })) };
-        res = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body), signal });
-        data = await res.json();
-        if (!res.ok) throw err((data.error && data.error.message) || ('HTTP ' + res.status), res.status === 400 || res.status === 403 ? 'auth' : res.status === 429 ? 'rate' : 'http');
-        const cand = data.candidates && data.candidates[0];
-        const text = cand && cand.content && cand.content.parts ? cand.content.parts.map(p => p.text || '').join('').trim() : '';
-        if (!text) throw err('The model returned no answer' + (cand && cand.finishReason ? ' (' + cand.finishReason + ')' : '') + '.', 'empty');
+        g = guard(signal);
+        const res = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body), signal: g.signal });
+        if (!res.ok) { const data = await errJSON(res); g.done(); throw err((data.error && data.error.message) || ('HTTP ' + res.status), res.status === 400 || res.status === 403 ? 'auth' : res.status === 429 ? 'rate' : 'http'); }
+        let text = '', reason = '';
+        await readSSE(res, g, d => { const cand = d.candidates && d.candidates[0]; if (!cand) return; if (cand.finishReason) reason = cand.finishReason; const p = cand.content && cand.content.parts ? cand.content.parts.map(x => x.text || '').join('') : ''; if (p) { text += p; emit(text); } });
+        g.done();
+        text = text.trim();
+        if (!text) throw err('The model returned no answer' + (reason ? ' (' + reason + ')' : '') + '.', 'empty');
         return text;
       }
-      const base = c.provider === 'openai' ? 'https://api.openai.com/v1' : c.base.replace(/\/+$/, '');
-      const headers = { 'content-type': 'application/json' }; if (c.key) headers.authorization = 'Bearer ' + c.key;
-      res = await fetch(base + '/chat/completions', { method: 'POST', headers, body: JSON.stringify({ model: c.model, messages: [{ role: 'system', content: system }, ...turns] }), signal });
-      data = await res.json();
-      if (!res.ok) throw err((data.error && (data.error.message || data.error)) || ('HTTP ' + res.status), res.status === 401 ? 'auth' : res.status === 429 ? 'rate' : 'http');
-      const text = data.choices && data.choices[0] && data.choices[0].message ? String(data.choices[0].message.content || '').trim() : '';
-      if (!text) throw err('The model returned no answer.', 'empty');
-      return text;
+      throw err('Unknown provider.', 'not_configured');
     } catch (e) {
+      if (g) g.done();
+      if (g && g.timedOut()) throw timeoutErr();
       if (e.name === 'AbortError') throw err('Stopped.', 'cancelled');
       if (e.code) throw e;
       throw err(!onClaude() ? 'Could not reach the provider. Check your internet connection, the base URL, and (for local servers) that requests from file pages are allowed.' : 'This page cannot connect to outside AI providers on claude.ai. Use the web version (ofurkancoban.github.io/GameTheoryLab) or open index.html from the app folder.', 'network');
@@ -130,7 +173,7 @@
     root.querySelector('#ai-test').addEventListener('click', async () => {
       if (!save()) return;
       msg.textContent = 'Testing...';
-      try { const t = await chat('Reply with exactly: OK', [{ role: 'user', content: 'Connection test.' }]); msg.textContent = 'Connected. The model replied: ' + t.slice(0, 60); }
+      try { const t = await chat('Reply with exactly: OK', [{ role: 'user', content: 'Connection test.' }], null, null); msg.textContent = 'Connected. The model replied: ' + t.slice(0, 60); }
       catch (e) { msg.textContent = 'Not connected: ' + e.message; }
     });
     root.querySelector('#ai-clear').addEventListener('click', () => { const c = cfg(); if (c) { c.key = ''; store.set('ai', c); } root.querySelector('#ai-key').value = ''; msg.textContent = 'Key removed from this browser.'; });
