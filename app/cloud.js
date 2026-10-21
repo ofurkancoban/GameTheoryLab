@@ -153,8 +153,10 @@
   GT.askBox = function (lessonId) {
     return '<div class="box" data-ask="' + lessonId + '" hidden><span class="lbl">Ask about this lecture</span>' +
       '<p class="small muted ask-src"></p><div class="ask-missing"></div>' +
-      '<div class="ask-log"></div><div class="row"><textarea class="ask-in" rows="2" style="flex:1;min-width:0" placeholder="e.g. Why does B offer A exactly Zδ_A in stage 2?" aria-label="Your question"></textarea></div>' +
-      '<div class="row"><button class="btn sm ask-go" type="button">Ask</button><button class="btn ghost sm ask-stop" type="button" hidden>Stop</button><span class="small muted ask-note"></span></div></div>';
+      '<div class="ask-log"></div>' +
+      '<div class="ask-compose"><textarea class="ask-in" rows="2" placeholder="e.g. Why does B offer A exactly Zδ_A in stage 2?" aria-label="Your question"></textarea>' +
+      '<button class="btn ask-go" type="button">Ask</button><button class="btn ghost ask-stop" type="button" hidden>Stop</button></div>' +
+      '<p class="small muted ask-hint">Enter to send, Shift + Enter for a new line.</p><p class="small ask-note"></p></div>';
   };
   GT.bindAsk = function (root) {
     const el = root.querySelector('[data-ask]'); if (!el) return;
@@ -171,10 +173,11 @@
       const turns = [];
       let ctl = null;
       stop.addEventListener('click', () => ctl && ctl.abort());
+      inp.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); if (!btn.disabled) btn.click(); } });
       btn.addEventListener('click', async () => {
         const q = inp.value.trim(); if (!q) return;
         if (!GT.aiAvailable()) { label(); return; }
-        inp.value = ''; btn.disabled = true; stop.hidden = false; note.textContent = '';
+        inp.value = ''; btn.disabled = true; btn.hidden = true; stop.hidden = false; note.textContent = '';
         const qd = document.createElement('div'); qd.className = 'ask-q'; qd.textContent = q; log.appendChild(qd);
         const ad = document.createElement('div'); ad.className = 'ask-a'; ad.innerHTML = '<p class="muted">Thinking...</p>'; log.appendChild(ad);
         const live = GT.streamInto(ad);
@@ -191,7 +194,7 @@
           if (hideCodes.includes(e && e.code)) { el.hidden = true; return; }
           note.textContent = GT.aiErrorText(e);
           if (!ad.textContent) ad.remove();
-        } finally { btn.disabled = false; stop.hidden = true; }
+        } finally { btn.disabled = false; btn.hidden = false; stop.hidden = true; inp.focus(); }
       });
     };
     if (C.ready || !hasViewer) go(); else document.addEventListener('gt-cloud', go, { once: true });

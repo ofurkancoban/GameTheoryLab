@@ -404,3 +404,11 @@ svg.cm { width: 100%; height: auto; min-width: 560px; display: block; }
 .ask-a mjx-container[display="true"] { margin: 6px 0; overflow-x: auto; overflow-y: hidden; }
 .ask-a.streaming::after { content: "▍"; color: var(--accent); animation: blink 1s steps(2) infinite; }
 @keyframes blink { 50% { opacity: 0; } }
+
+/* Ask box: chat-style composer with the button beside the text field. */
+.ask-compose { display: flex; gap: 8px; align-items: flex-end; margin-top: 10px; }
+.ask-compose .ask-in { flex: 1; min-width: 0; min-height: 44px; resize: vertical; }
+.ask-compose .btn { flex-shrink: 0; min-height: 44px; padding: 0 20px; }
+.ask-hint { margin: 6px 0 0; }
+.ask-note { margin: 4px 0 0; color: var(--bad); }
+.ask-note:empty { display: none; }
