@@ -4,6 +4,8 @@
  * Works when the app is opened as a local file; the published claude.ai page blocks outside connections. */
 (function () {
   const FREE_URL = 'https://text.pollinations.ai/openai';
+  /* The claude.ai viewer blocks outside connections; everywhere else (local file, GitHub Pages, any web server) they work. */
+  const onClaude = () => typeof window.claude !== 'undefined' && !!window.claude && typeof window.claude.use === 'function';
   const PROVIDERS = {
     free: { name: 'Free open model: GPT-OSS 20B (no key, no cost)', keyLabel: 'No key needed', needsKey: false, models: ['openai-fast'], help: 'GPT-OSS 20B is an open-weight model (Apache 2.0 licence), served free of charge by Pollinations (pollinations.ai). No account and no key needed. The free tier answers about once every 30 seconds per internet connection; your question text is sent to Pollinations.' },
     anthropic: { name: 'Anthropic (Claude)', keyLabel: 'Anthropic API key', needsKey: true, models: ['claude-opus-5-5', 'claude-sonnet-5-5', 'claude-haiku-5-5'], help: 'Create a key at console.anthropic.com.' },
@@ -82,7 +84,7 @@
     } catch (e) {
       if (e.name === 'AbortError') throw err('Stopped.', 'cancelled');
       if (e.code) throw e;
-      throw err(location.protocol === 'file:' ? 'Could not reach the provider. Check your internet connection, the base URL, and (for local servers) that requests from file pages are allowed.' : 'This page cannot connect to outside AI providers here. Download the app folder and open index.html to use your own AI.', 'network');
+      throw err(!onClaude() ? 'Could not reach the provider. Check your internet connection, the base URL, and (for local servers) that requests from file pages are allowed.' : 'This page cannot connect to outside AI providers on claude.ai. Use the web version (ofurkancoban.github.io/GameTheoryLab) or open index.html from the app folder.', 'network');
     }
   }
 
@@ -91,10 +93,10 @@
   GT.pages.ai = {
     title: 'AI tutor', render: () => {
       const c = cfg();
-      const local = location.protocol === 'file:';
+      const local = !onClaude();
       return '<p class="eyebrow">About and settings</p><h1>AI tutor</h1>' +
         '<p>The "Ask" boxes at the end of each lecture and the "Explain with AI" buttons in the drills use an AI tutor. <strong>By default it is a free, open-weight model</strong> (GPT-OSS 20B, Apache 2.0 licence) that needs no account and no key. You can switch to another provider below; API keys are stored only in this browser and sent only to the provider you pick.</p>' +
-        (local ? '' : '<div class="box warn"><span class="lbl">In the published version on claude.ai</span><p>Pages on claude.ai are not allowed to connect to outside services, so the free model (and any other provider) cannot be reached from here. In this version the Ask boxes use Claude through your claude.ai account. To use the free open model, download the app folder and open index.html: it then works without any setup.</p></div>') +
+        (local ? '' : '<div class="box warn"><span class="lbl">In the published version on claude.ai</span><p>Pages on claude.ai are not allowed to connect to outside services, so the free model (and any other provider) cannot be reached from here. In this version the Ask boxes use Claude through your claude.ai account. To use the free open model, open the web version at ofurkancoban.github.io/GameTheoryLab or the app folder (index.html): it then works without any setup.</p></div>') +
         '<div class="drill">' +
         '<label for="ai-p">Provider</label><select id="ai-p">' + Object.keys(PROVIDERS).map(k => '<option value="' + k + '"' + (k === c.provider ? ' selected' : '') + '>' + PROVIDERS[k].name + '</option>').join('') + '</select>' +
         '<p class="small muted" id="ai-help"></p>' +

@@ -2,7 +2,9 @@
 
 **Advanced Micro Lab**: an interactive study app for the course *Advanced Microeconomics* (game theory, Prof. Carsten Helm, University of Oldenburg).
 
-The app lives in [`app/`](app/). Open `app/index.html` in a browser; it runs offline and needs no build step.
+**Open the app: https://ofurkancoban.github.io/GameTheoryLab/**
+
+The app lives in [`app/`](app/). You can also open `app/index.html` locally in a browser; it runs offline and needs no build step.
 
 What it contains:
 
