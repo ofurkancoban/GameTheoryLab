@@ -25,6 +25,9 @@ Open `index.html` in a browser. It works offline (formulas use the bundled `vend
 | `cloud.js` | claude.ai features: cross-device sync, study-group questions, Ask (uses claude.ai or the connected provider) |
 | `exercise-tools.js` | Exercise progress ("Solved" / "Review again", synced across devices) and the random timed Exercise test |
 | `tutorial.js` | Interactive tutorial: a guided tour over the real pages in 7 chapters, with tasks to try, resumable; the Tutorial page and the invitation on the start page |
+| `walk-engine.js` | Step-by-step game walkthroughs: the widget that redraws a matrix, tree or diagram at every step with the reason for each move, the "Predict first" mode (questions before each move, results synced as `walkp`), their placement in the lecture pages, and the "Games step by step" page |
+| `walk-a.js`, `walk-b.js`, `walk-c.js` | The walkthroughs for Lectures 1-5, 6-10 and 11-18 (`walk-c.js` also places them into the lessons) |
+| `walk-q.js` | "Predict first" questions written by hand for walkthrough steps drawn as diagrams or resting on an assumption; matrix and tree steps get theirs automatically from `walk-engine.js` |
 | `widgets.js` | Interactive tools (matrix lab, tree solver, Cournot, auctions, signalling, ...) |
 | `app.js` | Routing, navigation, quiz bank, flashcards, drills, mock-exam timer, search, progress backup |
 

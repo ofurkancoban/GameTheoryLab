@@ -137,7 +137,7 @@ ${steps('Subgames, equilibrium path and SPE', [
 'Player 1: L leads to (1,2) and gives 1; R leads to (2,1) and gives 2. He picks R.',
 H`SPE: \((R,rl)\). Equilibrium path: \((R,l)\). The SPE also specifies what happens off the path (r after L), because a strategy is a complete plan of actions.`,
 H`A second Nash equilibrium \((L,rr)\) exists, but it is <strong>not</strong> subgame perfect: it contains the non-credible threat that player 2 plays r if player 1 plays R. (Strategy \(ll\) of player 2 means: play l after L and also l after R.)`])}
-${mx({ rows: ['L', 'R'], cols: ['ll', 'lr', 'rl', 'rr'], cells: [['3,1', '3,1', '1,2', '1,2'], ['2,1', '0,0', '2,1', '0,0']], br: true, cap: 'Normal form. Shaded: pure NE (R, ll), (R, rl), (L, rr). Only (R, rl) is subgame perfect; (R, ll) prescribes l after L, which is not optimal in that subgame.' })}
+${mx({ rows: ['L', 'R'], cols: ['ll', 'lr', 'rl', 'rr'], cells: [['3,1', '3,1', '1,2', '1,2'], ['2,1', '0,0', '2,1', '0,0']], br: true, cap: 'Normal form. Shaded: pure NE (R, rl) and (L, rr). Only (R, rl) is subgame perfect; (L, rr) rests on the non-credible threat r after R. (R, ll) is not a NE: against ll, L gives player 1 3 > 2.' })}
 ${box('warn', H`<p>Writing just "R" or "(R,l)" is not an SPE: give player 2's action at <em>all</em> information sets, e.g. \((R;\,rl)\).</p>`)}
 <h3>General remarks</h3>
 <ul><li>Subgame perfection is well defined for games with imperfect information too.</li>

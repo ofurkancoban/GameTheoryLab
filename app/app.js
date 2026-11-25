@@ -15,7 +15,7 @@
   function buildNav() {
     const parts = {};
     GT.lessons.forEach(l => { (parts[l.part] = parts[l.part] || []).push(l); });
-    let h = '<div class="nav-group"><span class="eyebrow">Overview</span><div class="nav">' + navLink(['home', 'Start here']) + navLink(['concepts', 'Concept map']) + navLink(['lab', 'Game lab']) + navLink(['tutorial', 'Tutorial']) + '</div></div>';
+    let h = '<div class="nav-group"><span class="eyebrow">Overview</span><div class="nav">' + navLink(['home', 'Start here']) + navLink(['concepts', 'Concept map']) + navLink(['lab', 'Game lab']) + navLink(['walk', 'Games step by step']) + navLink(['tutorial', 'Tutorial']) + '</div></div>';
     h += '<div class="nav-group"><span class="eyebrow">Progress</span><div class="progressbar"><div id="pbar"></div></div><div class="small muted" style="padding:0 10px" id="ptext"></div><div class="sync-line" id="syncStatus"' + (GT.cloud && GT.cloud.statusText ? '' : ' hidden') + ' title="Your progress is saved to your claude.ai account and appears on all your devices">' + (GT.cloud && GT.cloud.statusText ? esc(GT.cloud.statusText) : '') + '</div></div>';
     Object.keys(parts).forEach(p => {
       h += '<div class="nav-group"><span class="eyebrow">' + p + '</span><div class="nav">' + parts[p].map(l => '<a href="#' + l.id + '" data-r="' + l.id + '"><span class="num">L' + l.no + '</span><span>' + l.title + '</span>' + (done.has(l.id) ? '<span class="done">✓</span>' : '') + '</a>').join('') + '</div></div>';
@@ -179,6 +179,7 @@ ${box('tip', '<p>From the course information sheet: exam questions are partly cl
 <div class="grid-cards">
 <a class="card" href="#progress"><span class="t">My progress</span><span class="d">Accuracy per lecture and your weakest topics.</span></a>
 <a class="card" href="#plan"><span class="t">Study plan</span><span class="d">A day-by-day plan up to your exam date.</span></a>
+<a class="card" href="#walk"><span class="t">Games step by step</span><span class="d">${(GT.walks || []).length} games from all 18 lectures, played move by move with the reason for every move.</span></a>
 <a class="card" href="#lab"><span class="t">Game lab</span><span class="d">Enter any matrix: best responses, IESDS, pure and mixed equilibria. Solve any game tree by backward induction.</span></a>
 <a class="card" href="#drills"><span class="t">Practice drills</span><span class="d">Endless randomly generated exam-style computations with instant feedback.</span></a>
 <a class="card" href="#quiz"><span class="t">Question bank</span><span class="d">${GT.bank.length + Object.values(GT.quizzes).reduce((s, q) => s + q.length, 0)} multiple-choice questions with explanations.</span></a>
@@ -570,6 +571,7 @@ ${box('tip', '<p>From the course information sheet: exam questions are partly cl
       this.index = GT.lessons.map(l => ({ id: l.id, title: 'L' + l.no + ' ' + l.title, text: strip(l.title + ' ' + l.goals.join(' ') + ' ' + l.html) }))
         .concat(GT.ex.map(x => ({ id: 'exercises/' + x.id, title: 'Exercise: ' + x.t.replace(/\\\(|\\\)/g, ''), text: strip(x.t + ' ' + x.body) })))
         .concat(['exams', 'formulas', 'sources', 'osborne'].map(k => ({ id: k, title: GT.pages[k].title, text: strip(GT.pages[k].render()) })))
+        .concat((GT.walks || []).map(w => ({ id: w.lec + '/wk-' + w.id, title: 'Step by step: ' + w.title.replace(/\\\(|\\\)/g, ''), text: strip(w.title + ' ' + (w.intro || '') + ' ' + w.steps.map(s => [s.h, s.d, s.why, s.res].join(' ')).join(' ')) })))
         .concat(GT.cards.map(c => ({ id: 'cards', title: 'Flashcard: ' + c.f, text: c.f + ' ' + c.b })));
     },
     mount(root) {

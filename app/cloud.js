@@ -2,7 +2,7 @@
  * Every feature degrades to "not available here" when the page runs as a local file. */
 (function () {
   const C = GT.cloud = { db: null, user: null, sample: null, uid: null, ready: false, synced: false };
-  const SYNC_KEYS = ['done', 'wrong', 'stats', 'srs', 'srsq', 'examDate', 'restDays', 'answers', 'exstat'];
+  const SYNC_KEYS = ['done', 'wrong', 'stats', 'srs', 'srsq', 'examDate', 'restDays', 'answers', 'exstat', 'walkp'];
   const hasViewer = typeof window.claude !== 'undefined' && window.claude && typeof window.claude.use === 'function';
 
   /* ---------- sync ---------- */
@@ -43,6 +43,8 @@
     const ex = Object.assign({}, remote.exstat || {});
     Object.entries(local.exstat || {}).forEach(([k, v]) => { if (!ex[k] || (v.t || 0) >= (ex[k].t || 0)) ex[k] = v; });
     out.exstat = ex;
+    const wp = {}; [remote.walkp || {}, local.walkp || {}].forEach(s => Object.keys(s).forEach(id => { wp[id] = Object.assign(wp[id] || {}, s[id]); }));
+    out.walkp = wp;
     if (local.examDate) out.examDate = local.examDate;
     return out;
   }

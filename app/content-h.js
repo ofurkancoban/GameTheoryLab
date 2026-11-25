@@ -56,6 +56,14 @@ GT.pages.progress = {
         : '<p class="readout">' + (practised.length ? 'No weak topic: every practised lecture is at 80% or more.' : 'No data yet. Answer the quiz at the end of a lecture or do some drills, and your weak topics will appear here.') + '</p>') +
       (unpractised.length ? '<p class="small">Not practised yet (fewer than 3 answers): ' + unpractised.map(r => '<a href="#' + r.l.id + '">L' + r.l.no + '</a>').join(', ') + '.</p>' : '') +
       (GT.exStat ? '<h2>Exercises</h2><p>' + GT.exSummary() + ' <a href="#extest">Exercise test</a> draws your "review again" questions first.</p>' : '') +
+      (GT.walkPred ? (function () {
+        const per = GT.lessons.map(l => ({ l, s: GT.walkPred.lecture(l.id) })).filter(x => x.s.done);
+        if (!per.length) return '<h2>Games step by step</h2><p>No predictions yet. Switch on <strong>Predict first</strong> in the <a href="#walk">step-by-step games</a> and predict each move before it is shown.</p>';
+        const r = per.reduce((a, x) => a + x.s.right, 0), d = per.reduce((a, x) => a + x.s.done, 0);
+        const weakG = per.filter(x => x.s.done >= 2 && x.s.right / x.s.done < 0.7).sort((a, b) => a.s.right / a.s.done - b.s.right / b.s.done);
+        return '<h2>Games step by step</h2><p>Predictions: <strong>' + r + ' of ' + d + '</strong> correct (' + pct(r / d) + ', latest answer per question). ' +
+          (weakG.length ? 'Replay the games of ' + weakG.map(x => '<a href="#' + x.l.id + '">L' + x.l.no + '</a> (' + x.s.right + '/' + x.s.done + ')').join(', ') + ' and predict again.' : 'No lecture below 70%.') + '</p>';
+      })() : '') +
       '<h2>All lectures</h2><div class="tbl"><table><tr><th>Lecture</th><th>Learned</th><th class="num">Quiz</th><th class="num">Drills</th><th class="num">Exercises solved</th><th>Accuracy</th></tr>' +
       rows.map(r => { const ec = GT.exStat ? GT.exStat.counts(r.l.id) : null; return '<tr><td><a href="#' + r.l.id + '">L' + r.l.no + ' ' + r.l.title + '</a></td><td>' + (r.learned ? '<span class="pill ok">yes</span>' : '') + '</td><td class="num">' + r.s.q[0] + '/' + r.s.q[1] + '</td><td class="num">' + r.s.d[0] + '/' + r.s.d[1] + '</td><td class="num">' + (ec ? '<a href="#exercises/x-' + r.l.id + '">' + ec.solved + '/' + ec.total + '</a>' + (ec.review ? ' <span class="pill mid">' + ec.review + ' review</span>' : '') : '') + '</td><td>' + bar(r.acc) + '</td></tr>'; }).join('') + '</table></div>' +
       '<p><button class="btn sm ghost" id="pg-reset" type="button">Reset statistics</button> <span class="small muted" id="pg-msg"></span></p>';
